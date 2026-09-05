@@ -1,0 +1,9 @@
+.kombai
+.env
+.vscode*
+.env.local
+*.log
+*.swp
+node_modules/
+build/
+dist/
