@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ripple/internal/dispatcher"
+	"ripple/internal/metrics"
 	"ripple/internal/model"
 	"ripple/internal/store"
 )
@@ -66,6 +67,8 @@ func (r *DLQRouter) DispatchWithRetry(ctx context.Context, msg *dispatcher.Notif
 	}
 
 	// All retries failed -> route to DLQ in Postgres
+	metrics.DLQMessagesTotal.WithLabelValues(msg.ProjectID, msg.Channel, "max_retries_exceeded").Inc()
+
 	if r.pg != nil {
 		payloadBytes, _ := json.Marshal(msg)
 		eventID := ""

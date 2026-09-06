@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"ripple/internal/metrics"
 	"ripple/internal/store"
 )
 
@@ -65,6 +66,7 @@ func (h *Hub) Run(ctx context.Context) {
 			}
 			h.clients[userKey][client] = true
 			h.mu.Unlock()
+			metrics.WebSocketConnections.WithLabelValues(client.projectID).Inc()
 			log.Printf("Hub: Client registered for %s", userKey)
 
 		case client := <-h.unregister:
@@ -77,6 +79,7 @@ func (h *Hub) Run(ctx context.Context) {
 					if len(userClients) == 0 {
 						delete(h.clients, userKey)
 					}
+					metrics.WebSocketConnections.WithLabelValues(client.projectID).Dec()
 				}
 			}
 			h.mu.Unlock()

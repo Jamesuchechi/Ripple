@@ -12,6 +12,8 @@ import (
 	"ripple/internal/auth"
 	"ripple/internal/dispatcher"
 	"ripple/internal/dlq"
+	"ripple/internal/logger"
+	"ripple/internal/metrics"
 	"ripple/internal/model"
 	"ripple/internal/store"
 )
@@ -120,19 +122,31 @@ func (s *EventService) IngestEvent(ctx context.Context, projectID string, req *m
 
 // ProcessFanoutMessage is called by worker daemon (or sync fallback) to fanout activities to recipient feeds.
 func (s *EventService) ProcessFanoutMessage(ctx context.Context, activity *model.Activity) error {
+	start := time.Now()
+	defer func() {
+		metrics.FanoutLatency.WithLabelValues(activity.ProjectID, "push").Observe(time.Since(start).Seconds())
+	}()
+
+	l := logger.FromContext(ctx)
+	l.Debug("Processing fanout message", "event_id", activity.EventID, "project_id", activity.ProjectID)
+
 	// Hybrid Fanout: Check if actor is a celebrity
-	isCeleb, err := s.pg.IsCelebrity(ctx, activity.ProjectID, activity.ActorID)
-	if err != nil {
-		log.Printf("Warning: failed checking celebrity status for %s: %v", activity.ActorID, err)
-	} else if isCeleb {
-		log.Printf("Actor %s is a celebrity (is_celebrity=true). Skipping write-path ZSET fanout to followers.", activity.ActorID)
-		// Invalidate/refresh short-TTL celebrity cache in Redis
-		_ = s.redis.SetCachedCelebrityPosts(ctx, activity.ProjectID, activity.ActorID, nil, 0)
-		return nil
+	if s.pg != nil {
+		isCeleb, err := s.pg.IsCelebrity(ctx, activity.ProjectID, activity.ActorID)
+		if err != nil {
+			log.Printf("Warning: failed checking celebrity status for %s: %v", activity.ActorID, err)
+		} else if isCeleb {
+			log.Printf("Actor %s is a celebrity (is_celebrity=true). Skipping write-path ZSET fanout to followers.", activity.ActorID)
+			// Invalidate/refresh short-TTL celebrity cache in Redis
+			if s.redis != nil {
+				_ = s.redis.SetCachedCelebrityPosts(ctx, activity.ProjectID, activity.ActorID, nil, 0)
+			}
+			return nil
+		}
 	}
 
 	recipients := activity.Recipients
-	if len(recipients) == 0 {
+	if len(recipients) == 0 && s.pg != nil {
 		followers, err := s.pg.GetFollowers(ctx, activity.ProjectID, activity.ActorID)
 		if err != nil {
 			return fmt.Errorf("failed to lookup followers for actor %s: %w", activity.ActorID, err)
@@ -140,25 +154,27 @@ func (s *EventService) ProcessFanoutMessage(ctx context.Context, activity *model
 		recipients = followers
 	}
 
-	for _, recipientID := range recipients {
-		if err := s.redis.AddActivityToFeed(ctx, activity.ProjectID, recipientID, activity); err != nil {
-			log.Printf("Warning: failed fanout write to feed for recipient %s: %v", recipientID, err)
-		}
+	if s.redis != nil {
+		for _, recipientID := range recipients {
+			if err := s.redis.AddActivityToFeed(ctx, activity.ProjectID, recipientID, activity); err != nil {
+				log.Printf("Warning: failed fanout write to feed for recipient %s: %v", recipientID, err)
+			}
 
-		// Increment atomic unread counter and publish real-time notification frame
-		unreadCount, err := s.redis.IncrementUnreadCount(ctx, activity.ProjectID, recipientID)
-		if err != nil {
-			log.Printf("Warning: failed to increment unread count for %s: %v", recipientID, err)
-		}
+			// Increment atomic unread counter and publish real-time notification frame
+			unreadCount, err := s.redis.IncrementUnreadCount(ctx, activity.ProjectID, recipientID)
+			if err != nil {
+				log.Printf("Warning: failed to increment unread count for %s: %v", recipientID, err)
+			}
 
-		msg := &model.WSMessage{
-			Type:        "notification",
-			Activity:    activity,
-			UnreadCount: unreadCount,
-			Timestamp:   time.Now(),
-		}
-		if err := s.redis.PublishNotification(ctx, activity.ProjectID, recipientID, msg); err != nil {
-			log.Printf("Warning: failed to publish notification for %s: %v", recipientID, err)
+			msg := &model.WSMessage{
+				Type:        "notification",
+				Activity:    activity,
+				UnreadCount: unreadCount,
+				Timestamp:   time.Now(),
+			}
+			if err := s.redis.PublishNotification(ctx, activity.ProjectID, recipientID, msg); err != nil {
+				log.Printf("Warning: failed to publish notification for %s: %v", recipientID, err)
+			}
 		}
 	}
 	return nil

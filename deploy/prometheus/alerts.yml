@@ -1,0 +1,38 @@
+groups:
+  - name: ripple_alerts
+    rules:
+      - alert: RippleHighQueueLag
+        expr: queue_depth > 1000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ripple queue depth high (instance {{ $labels.instance }})"
+          description: "Queue depth for project {{ $labels.project_id }} on queue {{ $labels.queue_name }} has exceeded 1000 for more than 2 minutes."
+
+      - alert: RippleHighDeliveryErrorRate
+        expr: sum(rate(delivery_errors_total[5m])) by (project_id, channel) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Ripple notification delivery error rate spike"
+          description: "Channel {{ $labels.channel }} for project {{ $labels.project_id }} is experiencing a delivery error rate higher than 5% over 5m."
+
+      - alert: RippleDLQSpike
+        expr: sum(rate(dlq_messages_total[5m])) by (project_id, channel) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Ripple messages routing to Dead Letter Queue"
+          description: "Messages are failing all retry attempts and routing to DLQ on channel {{ $labels.channel }} for project {{ $labels.project_id }}."
+
+      - alert: RippleHighFanoutLatency
+        expr: histogram_quantile(0.99, sum(rate(fanout_latency_seconds_bucket[5m])) by (le, project_id)) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ripple p99 fanout latency high"
+          description: "p99 fanout latency for project {{ $labels.project_id }} is exceeding 1.0 second over 5 minutes."

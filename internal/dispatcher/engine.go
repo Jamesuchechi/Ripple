@@ -3,8 +3,12 @@ package dispatcher
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
+
+	"ripple/internal/logger"
+	"ripple/internal/metrics"
 )
 
 // DispatcherEngine manages provider adapters and routes notification messages to appropriate channels.
@@ -45,14 +49,23 @@ func (e *DispatcherEngine) GetAdapters(channel string) []ProviderAdapter {
 
 // Dispatch routes a message to registered provider adapter(s) for its channel.
 func (e *DispatcherEngine) Dispatch(ctx context.Context, msg *NotificationMessage) (*DispatchResult, error) {
+	l := logger.FromContext(ctx).With(
+		slog.String("project_id", msg.ProjectID),
+		slog.String("channel", msg.Channel),
+		slog.String("recipient_id", msg.RecipientID),
+	)
+
 	adapters := e.GetAdapters(msg.Channel)
 	if len(adapters) == 0 {
+		errStr := fmt.Sprintf("no provider adapter registered for channel: %s", msg.Channel)
+		metrics.DeliveryErrors.WithLabelValues(msg.ProjectID, msg.Channel, "no_adapter").Inc()
+		l.Error("Dispatch failed: no adapter registered", slog.String("error", errStr))
 		return &DispatchResult{
 			Success:   false,
 			Channel:   msg.Channel,
-			Error:     fmt.Sprintf("no provider adapter registered for channel: %s", msg.Channel),
+			Error:     errStr,
 			Timestamp: time.Now().UTC(),
-		}, fmt.Errorf("no provider adapter registered for channel: %s", msg.Channel)
+		}, fmt.Errorf("%s", errStr)
 	}
 
 	// Try registered adapters for the channel
@@ -60,6 +73,7 @@ func (e *DispatcherEngine) Dispatch(ctx context.Context, msg *NotificationMessag
 	for _, adapter := range adapters {
 		result, err := adapter.Dispatch(ctx, msg)
 		if err == nil && result.Success {
+			l.Info("Notification dispatched successfully", slog.String("provider", adapter.Name()))
 			return result, nil
 		}
 		if err != nil {
@@ -68,6 +82,9 @@ func (e *DispatcherEngine) Dispatch(ctx context.Context, msg *NotificationMessag
 			lastErr = fmt.Errorf("%s", result.Error)
 		}
 	}
+
+	metrics.DeliveryErrors.WithLabelValues(msg.ProjectID, msg.Channel, "adapter_failure").Inc()
+	l.Error("Dispatch failed across all adapters", slog.String("error", lastErr.Error()))
 
 	return &DispatchResult{
 		Success:   false,

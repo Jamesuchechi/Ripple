@@ -75,31 +75,31 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 - [x] Multi-tenant security isolation test: verify tenant data leakage is impossible
 
 ## Phase 9 — Reliability, Observability & Metrics
-- [ ] Prometheus metrics: fanout latency histogram, queue depth gauge, delivery errors counter, DLQ total counter, WS connections gauge
-- [ ] Grafana starter dashboard (`deploy/grafana/`)
-- [ ] Structured JSON logging with trace/request ID propagation through queue $\rightarrow$ worker
-- [ ] Alerting rules for queue lag and delivery error rates
-- [ ] Chaos test suite: kill worker mid-job, simulate Redis disconnect, verify zero dropped events
+- [x] Prometheus metrics: fanout latency histogram, queue depth gauge, delivery errors counter, DLQ total counter, WS connections gauge
+- [x] Grafana starter dashboard (`deploy/grafana/`)
+- [x] Structured JSON logging with trace/request ID propagation through queue $\rightarrow$ worker
+- [x] Alerting rules for queue lag and delivery error rates
+- [x] Chaos test suite: kill worker mid-job, simulate Redis disconnect, verify zero dropped events
 
 ## Phase 10 — Customer Dashboard (UI Control Plane)
-- [ ] Sign-up / Login flow (Session / OAuth)
-- [ ] Project creation & API Key management interface
-- [ ] Live delivery log table (filterable by event type, status, channel)
-- [ ] Real-time metrics view (throughput, queue depth, p99 latency, connected clients)
-- [ ] Visual Workflow Builder (map trigger events to channels & batch windows)
-- [ ] Interactive Notification Template Editor with Liquid syntax live preview
-- [ ] DLQ Inspector & 1-click batch replay UI
-- [ ] User Preference inspector UI
-- [ ] Usage view (event volume, delivery counts for billing tiers)
+- [x] Sign-up / Login flow (Session / OAuth)
+- [x] Project creation & API Key management interface
+- [x] Live delivery log table (filterable by event type, status, channel)
+- [x] Real-time metrics view (throughput, queue depth, p99 latency, connected clients)
+- [x] Visual Workflow Builder (map trigger events to channels & batch windows)
+- [x] Interactive Notification Template Editor with Liquid syntax live preview
+- [x] DLQ Inspector & 1-click batch replay UI
+- [x] User Preference inspector UI
+- [x] Usage view (event volume, delivery counts for billing tiers)
 
 ## Phase 11 — Developer Experience (DX), SDKs & Release
-- [ ] JavaScript/TypeScript client SDK (`@ripple/js`) for WebSockets and badging
-- [ ] React UI component library / hooks (`@ripple/react`)
-- [ ] Local developer CLI simulator (`ripple-cli trigger --event ...`)
-- [ ] Automated end-to-end `k6` load test suite with published performance benchmarks
-- [ ] `SECURITY.md`, `CONTRIBUTING.md`, versioned `/v1/` API stability guarantees
-- [ ] Tag `v1.0.0` release
+- [x] JavaScript/TypeScript client SDK (`@ripple/js`) for WebSockets and badging
+- [x] React UI component library / hooks (`@ripple/react`)
+- [x] Local developer CLI simulator (`ripple-cli trigger --event ...`)
+- [x] Automated end-to-end `k6` load test suite with published performance benchmarks
+- [x] `SECURITY.md`, `CONTRIBUTING.md`, versioned `/v1/` API stability guarantees
+- [x] Tag `v1.0.0` release
 
 ---
 
-**Current phase:** Phase 3 — Hybrid Fanout (Celebrity Split) (Completed).
+**Current phase:** Phase 11 — Developer Experience, SDKs & Release (v1.0.0 Tagged Release — All 11 Phases Completed!).

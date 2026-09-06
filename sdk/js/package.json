@@ -1,0 +1,22 @@
+{
+  "name": "@ripple/js",
+  "version": "1.0.0",
+  "description": "Official JavaScript/TypeScript client SDK for Ripple Notification & Feed Infrastructure Engine",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "ripple",
+    "notifications",
+    "feeds",
+    "websockets",
+    "badging"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

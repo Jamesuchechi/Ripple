@@ -1,121 +1,73 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import React, { useState } from 'react'
 import './App.css'
+import Sidebar from './components/Sidebar'
+import Header from './components/Header'
+import AuthModal from './components/AuthModal'
+import MetricsView from './components/MetricsView'
+import DeliveryLogsView from './components/DeliveryLogsView'
+import WorkflowBuilderView from './components/WorkflowBuilderView'
+import TemplateEditorView from './components/TemplateEditorView'
+import DLQInspectorView from './components/DLQInspectorView'
+import PreferencesView from './components/PreferencesView'
+import APIKeysView from './components/APIKeysView'
+import UsageView from './components/UsageView'
+
+const initialProjects = [
+  { id: '00000000-0000-0000-0000-000000000001', name: 'Primary Production App' },
+  { id: '11111111-2222-3333-4444-555555555555', name: 'Staging Ecosystem' },
+]
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [activeView, setActiveView] = useState('metrics')
+  const [projects] = useState(initialProjects)
+  const [activeProjectID, setActiveProjectID] = useState(initialProjects[0].id)
+  const [user, setUser] = useState({ email: 'admin@ripple.dev', id: 'usr_admin' })
+  const [isAuthOpen, setIsAuthOpen] = useState(false)
+
+  const renderActiveView = () => {
+    switch (activeView) {
+      case 'metrics':
+        return <MetricsView />
+      case 'logs':
+        return <DeliveryLogsView />
+      case 'workflows':
+        return <WorkflowBuilderView />
+      case 'templates':
+        return <TemplateEditorView />
+      case 'dlq':
+        return <DLQInspectorView />
+      case 'preferences':
+        return <PreferencesView />
+      case 'apikeys':
+        return <APIKeysView />
+      case 'usage':
+        return <UsageView />
+      default:
+        return <MetricsView />
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="dashboard-container">
+      <Sidebar activeView={activeView} setActiveView={setActiveView} />
+      <div className="main-content">
+        <Header
+          projects={projects}
+          activeProjectID={activeProjectID}
+          setActiveProjectID={setActiveProjectID}
+          user={user}
+          onOpenAuth={() => setIsAuthOpen(true)}
+        />
+        <main className="content-area">{renderActiveView()}</main>
+      </div>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        user={user}
+        setUser={setUser}
+      />
+    </div>
   )
 }
 

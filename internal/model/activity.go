@@ -18,6 +18,7 @@ var (
 type Activity struct {
 	EventID    string          `json:"event_id"`
 	ProjectID  string          `json:"project_id"`
+	TraceID    string          `json:"trace_id,omitempty"`
 	Verb       string          `json:"verb"`
 	ActorID    string          `json:"actor_id"`
 	ObjectID   string          `json:"object_id"`

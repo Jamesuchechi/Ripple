@@ -1,0 +1,30 @@
+{
+  "name": "@ripple/react",
+  "version": "1.0.0",
+  "description": "Official React UI component library and hooks for Ripple Notification Engine",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "peerDependencies": {
+    "@ripple/js": "^1.0.0",
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "keywords": [
+    "ripple",
+    "react",
+    "hooks",
+    "notifications",
+    "badge",
+    "feed"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@ripple/js": "file:../js",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "react": "^19.2.8",
+    "typescript": "^7.0.2"
+  }
+}
