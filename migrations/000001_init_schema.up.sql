@@ -56,20 +56,23 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 
 CREATE TABLE IF NOT EXISTS follows (
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  follower_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  followee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  follower_id TEXT NOT NULL,
+  followee_id TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (project_id, follower_id, followee_id)
 );
+CREATE INDEX IF NOT EXISTS idx_follows_followee ON follows(project_id, followee_id);
 
 CREATE TABLE IF NOT EXISTS event_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   verb TEXT NOT NULL,
-  actor_id UUID REFERENCES users(id),
+  actor_id TEXT NOT NULL,
   object_id TEXT NOT NULL,
   target_id TEXT,
+  recipients TEXT[],
   payload JSONB NOT NULL DEFAULT '{}',
+  dedup_key TEXT,
   status TEXT NOT NULL DEFAULT 'accepted',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -2,7 +2,16 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
+)
+
+var (
+	ErrMissingVerb    = errors.New("verb is required and cannot be empty")
+	ErrMissingActorID = errors.New("actor_id is required and cannot be empty")
+	ErrMissingObjectID = errors.New("object_id is required and cannot be empty")
+	ErrInvalidPayload  = errors.New("payload must be valid JSON")
+	ErrEventNotFound   = errors.New("event not found")
 )
 
 // Activity represents an event ingested into Ripple (Actor-Verb-Object-Target structure).
@@ -28,6 +37,26 @@ type IngestEventRequest struct {
 	Recipients []string        `json:"recipients,omitempty"`
 	Payload    json.RawMessage `json:"payload"`
 	DedupKey   string          `json:"dedup_key,omitempty"`
+}
+
+// Validate checks that required fields (verb, actor_id, object_id) are provided and non-empty.
+func (r *IngestEventRequest) Validate() error {
+	if r.Verb == "" {
+		return ErrMissingVerb
+	}
+	if r.ActorID == "" {
+		return ErrMissingActorID
+	}
+	if r.ObjectID == "" {
+		return ErrMissingObjectID
+	}
+	if len(r.Payload) > 0 {
+		var js json.RawMessage
+		if err := json.Unmarshal(r.Payload, &js); err != nil {
+			return ErrInvalidPayload
+		}
+	}
+	return nil
 }
 
 // IngestEventResponse represents the response for POST /v1/events.

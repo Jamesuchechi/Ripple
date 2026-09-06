@@ -21,8 +21,8 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		DatabaseURL:        getEnv("DATABASE_URL", "postgres://ripple:secret@localhost:5432/ripple?sslmode=disable"),
-		RedisURL:           getEnv("REDIS_URL", "redis://localhost:6379/0"),
+		DatabaseURL:        getEnv("DATABASE_URL", "postgres://ripple:secret@localhost:5435/ripple?sslmode=disable"),
+		RedisURL:           getEnv("REDIS_URL", "redis://localhost:6382/0"),
 		QueueURL:           getEnv("QUEUE_URL", "nats://localhost:4222"),
 		CelebrityThreshold: getEnvAsInt("CELEBRITY_THRESHOLD", 10000),
 		FanoutConcurrency:  getEnvAsInt("FANOUT_CONCURRENCY", 100),

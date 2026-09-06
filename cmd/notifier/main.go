@@ -1,25 +1,39 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/gorilla/websocket"
+	"github.com/redis/go-redis/v9"
 
 	"ripple/internal/config"
+	"ripple/internal/notifier"
+	"ripple/internal/service"
+	"ripple/internal/store"
 )
-
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins for dev
-	},
-}
 
 func main() {
 	cfg := config.Load()
+
+	redisOpt, err := redis.ParseURL(cfg.RedisURL)
+	var redisStore *store.RedisFeedStore
+	if err != nil {
+		log.Printf("Warning: invalid Redis URL (%v). Running WebSocket hub without Redis Pub/Sub.", err)
+	} else {
+		redisClient := redis.NewClient(redisOpt)
+		defer redisClient.Close()
+		redisStore = store.NewRedisFeedStore(redisClient, cfg.FeedCacheSize)
+		log.Printf("Notifier connected to Redis at %s", cfg.RedisURL)
+	}
+
+	hub := notifier.NewHub(redisStore)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go hub.Run(ctx)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -30,31 +44,21 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 
-	r.Get("/v1/ws/{userID}", handleWebSocket)
+	r.Get("/v1/ws/{userID}", func(w http.ResponseWriter, r *http.Request) {
+		userID := chi.URLParam(r, "userID")
+		projectID := r.Header.Get("X-Project-ID")
+		if projectID == "" {
+			projectID = r.URL.Query().Get("project_id")
+		}
+		if projectID == "" {
+			projectID = service.DefaultProjectID
+		}
+		hub.HandleWebSocket(w, r, projectID, userID)
+	})
 
 	addr := fmt.Sprintf(":%s", cfg.NotifierPort)
 	log.Printf("Ripple Real-time WebSocket Notifier listening on %s", addr)
 	if err := http.ListenAndServe(addr, r); err != nil {
 		log.Fatalf("Notifier server failed: %v", err)
-	}
-}
-
-func handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userID")
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Printf("Failed to upgrade WebSocket for user %s: %v", userID, err)
-		return
-	}
-	defer conn.Close()
-
-	log.Printf("WebSocket client connected for user: %s", userID)
-
-	for {
-		_, _, err := conn.ReadMessage()
-		if err != nil {
-			log.Printf("WebSocket client disconnected for user: %s", userID)
-			break
-		}
 	}
 }
