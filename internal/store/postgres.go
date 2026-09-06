@@ -529,6 +529,78 @@ func (s *PostgresStore) RevokeAPIKey(ctx context.Context, projectID, keyID strin
 	return nil
 }
 
+func (s *PostgresStore) GetAPIKeys(ctx context.Context, projectID string) ([]model.APIKey, error) {
+	query := `
+		SELECT id, project_id, key_hash, name, created_at, revoked_at
+		FROM api_keys
+		WHERE project_id = $1
+		ORDER BY created_at DESC
+	`
+	rows, err := s.db.QueryContext(ctx, query, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query API keys: %w", err)
+	}
+	defer rows.Close()
+
+	var keys []model.APIKey
+	for rows.Next() {
+		var k model.APIKey
+		var revokedAt sql.NullTime
+		if err := rows.Scan(&k.ID, &k.ProjectID, &k.KeyHash, &k.Name, &k.CreatedAt, &revokedAt); err != nil {
+			return nil, err
+		}
+		if revokedAt.Valid {
+			k.RevokedAt = &revokedAt.Time
+		}
+		keys = append(keys, k)
+	}
+	return keys, rows.Err()
+}
+
+func (s *PostgresStore) GetRecentEvents(ctx context.Context, projectID string, limit int) ([]model.Activity, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	query := `
+		SELECT id, project_id, verb, actor_id, object_id, COALESCE(target_id, ''), recipients, payload, COALESCE(dedup_key, ''), created_at
+		FROM event_log
+		WHERE project_id = $1
+		ORDER BY created_at DESC
+		LIMIT $2
+	`
+	rows, err := s.db.QueryContext(ctx, query, projectID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query recent events: %w", err)
+	}
+	defer rows.Close()
+
+	var activities []model.Activity
+	for rows.Next() {
+		var act model.Activity
+		var recipients []string
+		var payloadBytes []byte
+		if err := rows.Scan(
+			&act.EventID,
+			&act.ProjectID,
+			&act.Verb,
+			&act.ActorID,
+			&act.ObjectID,
+			&act.TargetID,
+			pq.Array(&recipients),
+			&payloadBytes,
+			&act.DedupKey,
+			&act.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		act.Recipients = recipients
+		act.Payload = json.RawMessage(payloadBytes)
+		activities = append(activities, act)
+	}
+	return activities, rows.Err()
+}
+
+
 
 
 

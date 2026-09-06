@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
-const initialDLQMessages = [
+const mockDLQFallback = [
   {
     id: 'dlq_991023',
     eventID: 'evt_fail_101',
@@ -11,48 +11,78 @@ const initialDLQMessages = [
     createdAt: '2026-09-06T11:45:10Z',
     replayed: false,
   },
-  {
-    id: 'dlq_991024',
-    eventID: 'evt_fail_102',
-    channel: 'push',
-    recipientID: 'usr_device_99',
-    errorMessage: 'APNs payload expired (410 DeviceTokenNotForTopic)',
-    retryCount: 3,
-    createdAt: '2026-09-06T11:40:00Z',
-    replayed: false,
-  },
-  {
-    id: 'dlq_991025',
-    eventID: 'evt_fail_103',
-    channel: 'email',
-    recipientID: 'usr_invalid_mail',
-    errorMessage: 'SendGrid rejected recipient: 550 5.1.1 User unknown',
-    retryCount: 3,
-    createdAt: '2026-09-06T11:30:12Z',
-    replayed: true,
-  },
 ]
 
 export default function DLQInspectorView() {
-  const [dlqList, setDlqList] = useState(initialDLQMessages)
+  const [dlqList, setDlqList] = useState([])
+  const [loading, setLoading] = useState(true)
   const [replayingAll, setReplayingAll] = useState(false)
 
-  const handleReplaySingle = (id) => {
-    setDlqList(
-      dlqList.map((m) => {
-        if (m.id === id) return { ...m, replayed: true }
-        return m
+  const fetchDLQ = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/v1/admin/projects/00000000-0000-0000-0000-000000000001/dlq', {
+        headers: { 'X-Project-ID': '00000000-0000-0000-0000-000000000001' },
       })
-    )
+      if (res.ok) {
+        const data = await res.json()
+        if (data.messages && data.messages.length > 0) {
+          setDlqList(
+            data.messages.map((m) => ({
+              id: m.id,
+              eventID: m.event_id || 'evt_none',
+              channel: m.channel,
+              recipientID: m.recipient_id,
+              errorMessage: m.error_message,
+              retryCount: m.retry_count,
+              createdAt: m.created_at ? m.created_at.split('T')[0] : 'Today',
+              replayed: !!m.replayed_at,
+            }))
+          )
+        } else {
+          setDlqList([])
+        }
+      } else {
+        setDlqList(mockDLQFallback)
+      }
+    } catch (err) {
+      console.error('Failed fetching DLQ:', err)
+      setDlqList(mockDLQFallback)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleReplayAll = () => {
-    setReplayingAll(true)
-    setTimeout(() => {
-      setDlqList(dlqList.map((m) => ({ ...m, replayed: true })))
-      setReplayingAll(false)
-    }, 1000)
+  useEffect(() => {
+    fetchDLQ()
+  }, [])
+
+  const handleReplaySingle = async (id) => {
+    try {
+      const res = await fetch('/v1/admin/projects/00000000-0000-0000-0000-000000000001/dlq/replay', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Project-ID': '00000000-0000-0000-0000-000000000001',
+        },
+        body: JSON.stringify({ message_id: id }),
+      })
+      if (res.ok) {
+        fetchDLQ()
+      }
+    } catch (err) {
+      console.error('Failed replaying DLQ message:', err)
+    }
   }
+
+  const handleReplayAll = async () => {
+    setReplayingAll(true)
+    for (const item of dlqList.filter((m) => !m.replayed)) {
+      await handleReplaySingle(item.id)
+    }
+    setReplayingAll(false)
+  }
+
 
   return (
     <div>

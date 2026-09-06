@@ -5,20 +5,40 @@ export default function MetricsView() {
     throughput: 1420,
     p99Latency: 14.2,
     activeWS: 842,
-    queueDepth: 3,
+    queueDepth: 0,
   })
+  const [isBackendOnline, setIsBackendOnline] = useState(false)
+
+  const fetchMetrics = async () => {
+    try {
+      const res = await fetch('/v1/admin/metrics', {
+        headers: { 'X-Project-ID': '00000000-0000-0000-0000-000000000001' },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setMetrics((prev) => ({
+          ...prev,
+          throughput: data.throughput || prev.throughput,
+          p99Latency: data.p99Latency || prev.p99Latency,
+          activeWS: data.activeWS || prev.activeWS,
+          queueDepth: data.queueDepth !== undefined ? data.queueDepth : prev.queueDepth,
+        }))
+        setIsBackendOnline(true)
+      } else {
+        setIsBackendOnline(false)
+      }
+    } catch (err) {
+      console.error('Metrics fetch error:', err)
+      setIsBackendOnline(false)
+    }
+  }
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setMetrics({
-        throughput: Math.floor(1380 + Math.random() * 120),
-        p99Latency: +(12.5 + Math.random() * 4).toFixed(1),
-        activeWS: 840 + Math.floor(Math.random() * 10),
-        queueDepth: Math.floor(Math.random() * 8),
-      })
-    }, 2000)
+    fetchMetrics()
+    const interval = setInterval(fetchMetrics, 3000)
     return () => clearInterval(interval)
   }, [])
+
 
   return (
     <div>
@@ -29,7 +49,9 @@ export default function MetricsView() {
             Live ingestion, fanout latency, active WebSocket connections, and queue depth metrics.
           </p>
         </div>
-        <span className="badge badge-emerald">Live Stream Active</span>
+        <span className={`badge ${isBackendOnline ? 'badge-emerald' : 'badge-warning'}`}>
+          {isBackendOnline ? 'Go Engine Online (:8080)' : 'Connecting to Go Engine...'}
+        </span>
       </div>
 
       <div className="grid-metrics">

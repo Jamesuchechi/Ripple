@@ -399,6 +399,21 @@ func (s *EventService) RevokeAPIKey(ctx context.Context, projectID, keyID string
 	return s.pg.RevokeAPIKey(ctx, projectID, keyID)
 }
 
+func (s *EventService) GetAPIKeys(ctx context.Context, projectID string) ([]model.APIKey, error) {
+	if projectID == "" {
+		projectID = DefaultProjectID
+	}
+	return s.pg.GetAPIKeys(ctx, projectID)
+}
+
+func (s *EventService) GetRecentEvents(ctx context.Context, projectID string, limit int) ([]model.Activity, error) {
+	if projectID == "" {
+		projectID = DefaultProjectID
+	}
+	return s.pg.GetRecentEvents(ctx, projectID, limit)
+}
+
+
 
 
 

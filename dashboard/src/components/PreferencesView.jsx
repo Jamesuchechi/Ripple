@@ -1,10 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 export default function PreferencesView() {
   const [recipientID, setRecipientID] = useState('usr_alice')
   const [quietHoursEnabled, setQuietHoursEnabled] = useState(true)
   const [startUTC, setStartUTC] = useState('22:00')
   const [endUTC, setEndUTC] = useState('07:00')
+  const [saveStatus, setSaveStatus] = useState(null)
 
   const [channels, setChannels] = useState({
     webhook: true,
@@ -13,6 +14,58 @@ export default function PreferencesView() {
     sms: true,
     in_app: true,
   })
+
+  const fetchPreferences = async (userID) => {
+    try {
+      const res = await fetch(`/v1/users/${userID}/preferences`, {
+        headers: { 'X-Project-ID': '00000000-0000-0000-0000-000000000001' },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.channels) setChannels((prev) => ({ ...prev, ...data.channels }))
+        if (data.dnd !== undefined) setQuietHoursEnabled(data.dnd)
+        if (data.start_utc) setStartUTC(data.start_utc)
+        if (data.end_utc) setEndUTC(data.end_utc)
+      }
+    } catch (err) {
+      console.error('Failed fetching user preferences:', err)
+    }
+  }
+
+  useEffect(() => {
+    if (recipientID) {
+      fetchPreferences(recipientID)
+    }
+  }, [recipientID])
+
+  const handleSavePreferences = async () => {
+    try {
+      setSaveStatus('Saving...')
+      const payload = {
+        channels,
+        dnd: quietHoursEnabled,
+        start_utc: startUTC,
+        end_utc: endUTC,
+      }
+      const res = await fetch(`/v1/users/${recipientID}/preferences`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Project-ID': '00000000-0000-0000-0000-000000000001',
+        },
+        body: JSON.stringify(payload),
+      })
+      if (res.ok) {
+        setSaveStatus('Saved!')
+        setTimeout(() => setSaveStatus(null), 2500)
+      } else {
+        setSaveStatus('Failed to save')
+      }
+    } catch (err) {
+      console.error('Failed saving user preferences:', err)
+      setSaveStatus('Error saving')
+    }
+  }
 
   const toggleChannel = (ch) => {
     setChannels({ ...channels, [ch]: !channels[ch] })
@@ -27,7 +80,9 @@ export default function PreferencesView() {
             Inspect and override recipient DND quiet hours, timezone configurations, and channel opt-in rules.
           </p>
         </div>
-        <button className="btn btn-primary">Save Recipient Preferences</button>
+        <button className="btn btn-primary" onClick={handleSavePreferences}>
+          {saveStatus || 'Save Recipient Preferences'}
+        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
